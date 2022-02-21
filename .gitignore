@@ -1,0 +1,7 @@
+#Ignore all kind of certificates#
+*.crt
+*.csr
+*.pub
+
+#Remove files MAC_OS#
+.DS_Store

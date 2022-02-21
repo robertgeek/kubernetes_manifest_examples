@@ -1,0 +1,182 @@
+-Kubernetes es la herramienta que controla a los contenedores, es un visor que
+vigila el comportamiento de los contenedores, asi como gestionar las cargas de trabajo.
+En pocas palabras es un orquestador de contenedores. funciona con diferentes contenedores
+no solo docker.
+-K8s es la contraccion de "Kubernetes"
+-Servicios Kubernetes
+  -Service Discovery
+  -Rollouts y Rollbacks(Incremento de versiones y regreso de Versiones)
+  -Optimization of resources
+  -Self-healing
+  -Secrets
+  -Horizontal Scaling
+
+Como funciona
+-Master es donde viven las funciones de K8s digamos que es el controlador de los nodos.
+-Nodos es donde viven los contenedores, cada nodo tiene dentro contenedores y master vigila las ordenes
+ hacia cada nodo.
+
+-"kubectl" es el comando para enviar ordenes. en realidad lo lee la kubeapi server de K8s
+-Las solicitudes a la kubeapi se comunica con el scheduler para revisar en donde
+ puede ponerse y revisa los recursos para que pueda hacer las creaciones.
+ El scheduler decide donde ubicar los containers eligiendo el nodo mas adecuado.
+-KubeController vigila los nodos con el nodecontroller, dentro de KubeController
+se controla nodecontroller, replicaocontroller, endpointcontroller y serviceaccounts-controller.
+-ETCT es la bd de k8s donde se guardan mediante un map la relacion de versiones e information de control ya que
+ ahi se toma la informacion para que el estado del cluster sea consistente.
+-Kubelet es el responsable de recibir ordenes del master y enviar informacion al master.
+ dentro kubelet habla con docker para crear dichos servicios en los nodos.Tambien envia
+ estadisticas de los nodes.
+-KubeProxy se encarga de todo el tema de red de conexiones internamente.
+-ContainerRuntime es el executor para ejecutar los containers. es un vendor
+ specifico sea docker u otro manejador de contanedores.
+-Para crear un cluster en local se usa minikube en este caso puedes usar start, stop or remove para
+ hacer operaciones sobre el cluster.
+-Los contenedores siempre son independientes no se pueden ver entre si esa es la logica
+ de los contenedores. Son aislados. pero puede ver procesos dentro de el no a externos.
+-Un pod sirve para compartir namespaces entre contenedores esto habilita la comunicacion entre los containers
+ y por abajo crea un id-namespace y lo asigna a cada container para asi comunicarse en todo momento con los
+ containers que viven en el pod. Un pod comparte una ip y dentro de ella puedes ver los containers.
+---Comandos
+- Creacion de pods kubectl run namepod --image=imagetoUse
+- Ver toda la info de un pod : kubectl describe pod namepod
+- Para ver las apis usamos kubectl api-resources y mostrara las operaciones que se pueden usar
+- Eliminar pods kubectl delete pod namepod
+- Obtener el yaml asociado del pod kubectl get pod namepod -o yaml or json
+- Acceder a la consola de un pod kubectl exec -ti podname -- sh para acceder a terminal del pod.
+- Para ver logs del pod solo es correr kubectl logs podnama
+- Manifiestos definen los recursos de creacion es importante para manejar los recursos.
+- Para mandar crear elementos desde un yaml file solo es crear el yaml file poner las directrices y
+  realizar kubectl apply -f nombrefile.yaml y se crearan los recursos desginados en el manifiesto.
+- Para borrar el conjunto de recursos dentro un manifiesto solo usar kubectl delete -f nombrefile.yaml
+- Si tienes un pod con multiples containers y quieres acceder a uno espcifico debes de abrir el container con el name
+  kubectl logs podname -c namecontainer
+- Para ver acceder a un container especifico en multipleconainers sobre un pod
+ kubectl exec -ti podname -c namecontainer -- sh
+ -Replicaset garantiza un numero determinado de pods corriendo y el replicaset se adueñan de los pods porque
+ los esta vigilando y es importante usar labels
+ - para crear replicaset solo usar kubectl apply -f file.yaml
+ - para borrar kubectl delete -f file.yaml.
+ - Hay que tener cuidado con replicaSet ya que al cambiar la image o alguna configuracion no actualiza el pod
+   no cambia configuraciones esto lo hara hasta que se vuelva a crear el pod.
+  - A tener en cuenta es la jerarquia en Kubernetes Deployment > ReplicaSet > Pod
+  -Deplyoment controla versiones al cambiar la conf esto lo hace controlando maxUnavailable and maxSearch
+   controla cuantos pods maximos puede haber para hacer el cambio.
+- Los deployments puede mantener al menos 3 replica set o mejor dicho versiones de tus pod V1,V2,V3
+- Para mostrar los labels de deployments o pods etc usar --show-labels y apareceran los labes en la terminal
+- Para actualizar un deployment solo es necesario cambiar alguna configuracion dentro del Manifiestos
+  y hacer un apply kubectl apply -f nombre.yaml
+- Con el siguiente comando puedes ver el rollout history y saber que versiones se han realizado de ese
+  replicationSet kubectl rollout history deployment deployment-test.
+-Por defecto el deployment guarda 10 versiones de los replicaset. para cambiar solo agregar
+ spec.revisionHistoryLimit: number en el manifiesto del deployment
+-Para especificar la cause del deployment se realiza annotations: kubernetes.io/change-cause: "Cause"
+ dentro del manifiesto en la parte de metadata.
+ -Para relizar un rollback a una revision especifica kubectl rollout undo deployment deployment-test --to-revision=#revision
+ -Un servicio es un objeto aislado que observa los pods dentro de un deployment o replicaset para Obtener
+  informacion de los todos los pods en un punto por medio de un label, este te aseguro mantener una ip con el tiempo
+  y asi evitar perder el servicio.
+- cuando se crea el manifiesto del servicio es importante fijarse en los labels por lo tanto siempre debe coincidir
+  el template.metadata.labels.app con spec.selector.app.
+-Para crear un servicio se crea el manifiesto y se aplica kubectl apply -f file.yaml
+-El servicio creara un endpoint y ese endpoint apuntara a los pods en realidad funge como un balancer.
+ cuando se crea el servicio la ip es de tipo ClusterIP y solo se puede ver desde la maquina local no esta expuesta
+-El type IP es importante porque eso nos ayuda a exponer servicios por lo tanto ClusterIP es privado no se expone mas que dentro del ClusterIP
+ NodePort si nos permite exponer el servicio
+- El balancer type solo funciona en clouds no en locales.
+-Cuando se crean aplicaciones y la imagen de docker que representa el programa o servicio no esta en docker internamente
+ se cambia el image pull policy para descargar dicha imagen, user ifNotPresent.
+ -Una vez que se expone el servicio especificamente para mac hay que usar el comando kubectl port-forward service/nameService 7000:80 porque
+  directamente no lo puede hacer.
+- Para construir tus imagenes solo usar docker build -t nombreimage -f Dockerfile "path"
+-Para ver la creacion en directo podemos usar el parametro --watch por decir kubectl get pods --watch y es como un tail -f
+-Un namespace es como un cluster virtual dentro del cluster de kubernetes,
+es decir al crear recursos dentro de un namespaces estos recursos se encontraran aislados de otro namespace
+que viva dentro del cluster.
+-Los namespaces tienen sus propias reglas de creacion y estas se puede definir por namespaces.
+- Si no se asigna un namespaces con kubectl -n nombreNamespace automaticamente caera en default.
+-Para crear un namespace se corren el comando: kubectl create namespace nombreNamespace o usar el yaml.
+- A los namespaces se le pueden agregar servicios.
+-Para comunicar servicios entre namespaces la url es : svcName.+ nsName.+ svc.cluster.local
+- Un contexto es aquel que nos indica en que namespaces nos encontramos es decir un contexto nos ayuda a saber
+  que configuracion estamos cargando al inicio.
+-El comando para ver las conf del contexto es kubectl config view.
+-Para crear un nuevo contexto podemos usar kubectl config -set-context nombrecontexto --namespace= nombreNS --cluster= nombreCLuster --user= nombreUsuario
+- Para elegir un contexto solo usar kubectl config use-context nombreContexto
+-Se necesita poner limites los limites es para un pod no ocupe todos los recursos de un nodo.
+-1CPU es igual a 1000 milicores se puede jugar con ese valor en el limite.
+-Request y Limit request se usa para garantizar el numero dado y limit no garantiza el espacio solo es como el maximo que puede dar
+-Al configurar los pods existen unas clases que te dicen que tipo de limites se pueden ver las QOS en la documentacion.
+-Recordar que son Burstable, Garanteed, Best Efford.
+-Limit range nos permite poner limites a nivel de objecto.
+-Resource Quota ya no actua a nivel de objecto si no a nivel de namespace, y esto nos ayuda a limitar la
+ suma de todos los recursos individuales.
+-Un probe es una prueba o diagnostico para aplicar sobre los pods y ver que todo funcione bien, estos funcionan
+ en un rango de tiempo este es ejecutado por kubelet.
+-Los probes se aplican con un comando al pod, otro es por TCP y la ultima es por HTTP.
+-A las pruebas se le conocen como liveness, readiness o startup.
+-Liveness nos dice si la aplicacion sigue con vida.
+-Readiness es un diagnostico que asegura que el pod ya esta listo para funcionar y aceptar Request
+-Startup es un diagnostico que es aplicado a aplicaciones pesadas cuando es pasado el diagnostico
+ activa el liveness y el readiness.
+-Readiness si no funciona elimina la ip del endpoint para evitar que no de servicio.
+-Liveness reinicia el pod si no cumple el diagnostico.
+-Al crear una variable de entorno solo se crean las variables por contenedor y se pueden leer y estan disponibles para usarse dentro del contenedor.
+-Un configmap es un objeto que nos ayuda a guardar variables de entorno para que sean consumidas por los pods.
+ lo que es mejor es un mapa llave, valor ejemplo nginx_valor: 1
+-Para crear un configmap se usa kubectl create configmap nginx-config "ruta del archivo".
+-Si se pasa una carpeta creara un cm por cada archivo que haya en la carpeta
+-Un secret es un objeto parecido a cm pero es para datos sensitivos.
+-Secret debe de tenerse cuidado de usar data y stringData porque solo lo codea en base64
+-Hay que usar tecnicas en secrets para no poner los datos sensibles en los Secrets
+-Una tecnica es usar variables de entorno cuando se tengan en la shell crear el secret local ya con la data pero siempre exponer la que tiene variables
+-Un volumen sirve para persistir data como en docker ya que los pods son efimeros.
+-tipos de volumenes puede ser emptyDir el cual vive dentro del pod como una carpeta.
+ si el pod muere tambien los datos pero si se mantiene y crea nuevos containers estos mantienen la data
+-Volumen tipo hostPath: este crea volumenes en el nodo y apuntan al container no depende de la vida del pod sino del nodo.
+ tener cuidado porque si tenemos mas de un nodo puede haber problemas de rutas.
+-Volumen tipo cloud volume se pueden montar en los pods el problema es que estos se debe saber muchos detalles del volumen.
+-Que es un PVC(Persist volume claims) y un PV(Persist volume) Un pv es como una conexion
+ a un cloud store pero pvc reclama un pv y este accede a clouds
+-El uso de un volumen empty dir es mas para cache o logs que no importa si se pierde esa info es pero tener en cuenta que no es para persistir data importante
+-Los pv estan atados a los pvc si un pvc esta asignado a un pv ya no se puede volver a usar el pv a otro pvc.
+-Un storage class es un tipo de almacenamiento dinamico el cual un claim pide un pv pero el pv no existe y este crea automaticamente el pv.
+-Podemos usar un comando para editar cualquier objeto de kubernetes solo usars
+ kubectl edit pv nombrePV
+-Si se usa en el pv la politica de recicle este liberara el recurso para volver a ser usado mientras retain mantendra la data.
+ y delete borrara todo en cuanto se termine el pv.
+-RBAC es role based access control.
+-Los roles aplican solo a namespaces dentro del rol tenemos resources y permisos.
+-Los cluster roles aplican a cualquier recurso dentro del cluster sin estar encasillado al namespace.
+-el rol como el cluster rol definen las reglas a ejecutar dentro de cada scope.
+-Rolebinding and clusterrolebinding sirve para enlazar usuarios a permisos.mediante un subject.
+-Usuarios y grupos no se guardan en el cluster estos se manejan de manera externa y se autentifican por medio de una apis
+tambien es bueno usar certificados para usuarios y asi autenticar usuarios.
+por medio de certificado kubernetes toma el CN como el usuario y el Organization como el grupo del usuario.
+Si queremos usar roles ya definidos en kubernetes solo e necesario usar los bindings y referenciarlos al role.
+Los roles pueden ser usados por grupo para evitar hacer roles personalizados.
+-Service Account funciona para comunicar pods entre si esto nos ayuda a pedir informacion de un pod a otro mediante el service account. y este se crea en el namespaces
+-Se pueden realizar llamados a la API de kubernetes mediante curl y pegandole al endpoint pero se tienen que pasar el jwt token del service account.
+-A los services account se le aplican roles binding para dar permisos.
+-Ingress nos ayuda a resolver los problemas que se presentan en la escalabilidad, es ingress se definen reglas
+para routear a los servicios correctos dentro del cluster y asi evitar tener multiples balancers para acceder a ellos.
+Ingress controller es el que escucha por un puerto afuera del cluster y este escuchas las reglas de Ingress
+para routear a los servicios deseados.
+-AWS tienen el ejecutable ektctl para configurar un cluster de kubernetes.
+-Para saber en que cluster estamos solo debemos correr kubectl cluster-info
+-Recuerda cuando se crea el cluster este no contiene nodos hay que agregarlos para que el scheduler pueda
+colocar los pods y demas objetos dentro del nodo.
+*checar la documentacion de eks para crear el nodo y revisar cloudformation.
+-Para habilitar el trafico en cloud es necesario usar un load balancer este estara linkeado con un ingress controller
+y el ingress controller leera las reglas dadas en el ingres resource para poder acceder desde internet a nuestra app.
+-EL ingress controller debe estar vigilado por politicas de amazon para poder acceder a los recursos de amazon.
+y este tiene que estar adjuntado a un iam account service.
+-Comando importante para ver todo lo que corre en un namespaces
+ kubectl get all -n namespace
+ -Para crear un tunel dentro del nodo hacia nosotros usamos
+ kubectl port-forward nombre pod portmimaquina:portdelpod -n nombre namespace
+ -Horizontal pod autoscaler es un objecto de kubernetes pero esta por encima del deployment. Este consulta una fuente de metricas
+ y este a su vez escala los pods dadas las metricas dadas
+-Metrics hpa nos da las metricas que debe seguir hpa para escalar o reducir los pods dadas las metricas obtenidas.
+-El cluster autoescaler nos ayuda a escalar el cluster para poder dar mas capacidad eincrementar recursos para poder alojar mas pods.
+-En aws siempre es mejor usar eksctl ya que implementa todo lo necesario para tener bien el cluster de aws. 
